@@ -1,13 +1,20 @@
 {
     "name": "rgergo67/openldap",
-    "license": "GPL-3",
+    "description": "Laravel package to manage users and groups in OpenLDAP",
+    "license": "GPL-3.0-only",
     "authors": [
         {
             "name": "Ratting Gergő",
             "email": "ratting.gergo@uni-pannon.hu"
         }
     ],
+    "minimum-stability": "stable",
     "require": {},
+    "autoload": {
+        "psr-4": {
+            "Openldap\\": "src/"
+        }
+    },
     "extra": {
         "laravel": {
             "providers": [
