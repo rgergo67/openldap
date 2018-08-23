@@ -4,6 +4,17 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | LDAP sync
+     |--------------------------------------------------------------------------
+     |
+     | Should we sync to ldap real time?
+     | example : true
+     |
+     */
+    'sync' => env('OPENLDAP_SYNC'),
+
+    /*
+     |--------------------------------------------------------------------------
      | Host
      |--------------------------------------------------------------------------
      |
@@ -144,13 +155,30 @@ return [
         "top",
         "person",
         "eduPerson",
+        "niifPerson",
         "posixAccount",
         "inetOrgPerson",
         "radiusprofile",
         "shadowAccount",
+        "sambaSamAccount",
         "schacContactLocation",
         "organizationalPerson",
         "schacLinkageIdentifiers" ,
+    ],
+
+    'system_type_object_class' => [
+        "top",
+        "organizationalUnit"
+    ],
+
+    'system_object_class' => [
+        "top",
+        "organizationalUnit"
+    ],
+
+    'group_object_class' => [
+        "top",
+        "posixGroup"
     ],
 
 ];
