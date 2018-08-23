@@ -103,7 +103,19 @@ $openldap->newPassword($user, "secret");
 // To replace the old password, and checking if it's correct
 $openldap->replacePassword($user, "oldSecret", "newSecret");
 
-$group_dn = "cn=editor,ou=hr.example.com,ou=joomla,ou=sys,dc=example,dc=com";
+dump($group->dn);
+//"cn=editor,ou=hr.example.com,ou=joomla,ou=sys,dc=example,dc=com";
+dump($group->ldap_format);
+/**
+* [
+*     "objectClass" => config('openldap.group_object_class'),
+*     'cn' => "editor"
+* ]
+*/
+
+//Adding a group
+$openldap->addRecord($group->dn, $group->ldap_format);
+
 // Adding user to a group
 $openldap->addUserToGroup($user, $group_dn);
 
@@ -128,4 +140,42 @@ $openldap->deleteUserFromGroup($user, $group_dn);
 
 // Delete user from all groups
 $openldap->deleteUserFromAllGroups($user);
+```
+### Updating user
+If you would like to update a user, first check if its uid (or the attribute that is part of the dn) is dirty (is changed). If so, first rename it, and update afterwards. The third parameter of rename should only be used if you move the record somewhere else. Note that second parameter is only RDN, not the full DN.
+```
+if($user->isDirty('uid')){
+    if(!$openldap->rename($user->oldDn, 'uid='.$user->uid, null))
+        return false;
+}
+
+$openldap->updateUser($user);
+```
+One more thing: if you rename something, the first parameter should be the old DN. If you for example hook into the users updating event, the $user objects $user->uid field (that is part of the DN) would contain the updated uid (if you modified it). To get the old dn, make use of Laravels $user->getOriginal() function.
+```
+public function getOldDnAttribute()
+{
+    return "uid={$this->getOriginal('uid')},{$this->baseEmployeeDn}";
+}
+```
+
+###Sync groups
+Sometimes you just need to be sure the users groups are all synced. This function removes all groups from user, and adds them again.
+```
+$openldap->syncUserGroups($user);
+```
+
+###Sync groups on user save save
+Hook into the users saved event, and run group sync there. We have a series of checkboxes with group names that we can retrieve with `request('groups')`.
+```
+// if all groups were deleted, return
+if(!request('groups'))
+    return true;
+
+$this->openldap->deleteUserFromAllGroups($user);
+
+foreach(request('groups') as $groupId){
+    $group = Group::findOrFail($groupId);
+    $this->openldap->addUserToGroup($user, $group->dn);
+}
 ```
