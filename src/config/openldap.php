@@ -68,6 +68,17 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | PhonebookDn
+     |--------------------------------------------------------------------------
+     |
+     | basedn for phonebook entries
+     | example : 'ou=phonebook,dc=uni-pannon,dc=hu'
+     |
+     */
+    'base_phonebook_dn'    => env('OPENLDAP_BASE_PHONEBOOK_DN'),
+
+    /*
+     |--------------------------------------------------------------------------
      | EmployeeDn
      |--------------------------------------------------------------------------
      |
@@ -156,6 +167,7 @@ return [
         "person",
         "eduPerson",
         "niifPerson",
+        "niifEduPerson",
         "posixAccount",
         "inetOrgPerson",
         "radiusprofile",
@@ -164,6 +176,34 @@ return [
         "schacContactLocation",
         "organizationalPerson",
         "schacLinkageIdentifiers" ,
+    ],
+
+    'student_object_class' => [
+        "top",
+        "person",
+        "eduPerson",
+        "niifPerson",
+        "niifEduPerson",
+        "posixAccount",
+        "inetOrgPerson",
+        "radiusprofile",
+        "shadowAccount",
+        "sambaSamAccount",
+        "schacContactLocation",
+        "organizationalPerson",
+        "schacLinkageIdentifiers" ,
+    ],
+
+    'ou_object_class' => [
+        "top",
+        "organizationalUnit"
+    ],
+
+    'phonebook_entry_object_class' => [
+        "top",
+        "person",
+        "organizationalPerson",
+        "inetOrgPerson",
     ],
 
     'system_type_object_class' => [

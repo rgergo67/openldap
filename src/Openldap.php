@@ -144,7 +144,7 @@ class OpenLDAP
     public function search($searchDn, $filter, $attributes = array())
     {
         try {
-            $search = ldap_search($this->connection, $searchDn, ldap_escape($filter, null, LDAP_ESCAPE_FILTER), $attributes);
+            $search = ldap_search($this->connection, $searchDn, $filter, $attributes);
 
             return (ldap_count_entries($this->connection, $search))
                 ? ldap_get_entries($this->connection, $search)
@@ -188,11 +188,11 @@ class OpenLDAP
                 return true;
             }
         } catch(\Exception $e) {
-            \Session::flash('flashErrors.connection', "Failed adding {$addDn}");
             Log::error("Failed adding {$addDn}", ['data' => print_r($record, true)]);
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
+            \Session::flash('flashErrors.connection', "Failed adding {$addDn} | " . ldap_error($this->connection) . " | " . $errorMessage);
         }
 
         return false;
@@ -348,14 +348,41 @@ class OpenLDAP
         try {
             return (ldap_delete($this->connection, $dn));
         } catch(\Exception $e) {
-            \Session::flash('flashErrors.connection', "Failed deleting {$dn}");
             Log::error("Failed deleting {$dn}");
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
+            \Session::flash('flashErrors.connection', "Failed deleting {$dn} | " . ldap_error($this->connection) . " | " . $errorMessage);
         }
 
         return false;
+    }
+
+    /**
+     * Delete an entry with all of its child entries recursively
+     *
+     * @param string $dn Dn of node to delete
+     * @param bool $deleteOnlyChildren Don't delete this node, only it's children
+     *
+     * @return bool Result of delete
+     */
+    public function recursiveDelete($dn, $deleteOnlyChildren = false)
+    {
+        $searchResult = ldap_list($this->connection, $dn, "ObjectClass=*");
+        $children = ldap_get_entries($this->connection, $searchResult);
+        $this->stripCount($children);
+        foreach($children as $child){
+            $result = $this->recursiveDelete($child['dn']);
+            if (!$result) {
+                return $result;
+            }
+        }
+
+        if($deleteOnlyChildren){
+            return true;
+        }else{
+            return $this->deleteRecord($dn);
+        }
     }
 
     /**
