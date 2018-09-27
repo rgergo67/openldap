@@ -69,11 +69,11 @@ class OpenLDAP
         ldap_set_option($connection, LDAP_OPT_PROTOCOL_VERSION, 3);
 
         if($connection == false) {
-            \Session::flash('flashErrors.connection', "Connection could not be estabilished to {$host} {$port}");
             Log::emergency("Connection could not be estabilished to {$host} {$port}");
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
+            \Session::flash('flashErrors.connection', "Sikertelen LDAP csatlakozás: {$host} {$port}");
         }
 
         // PHP Reference says there is no control of connection status in OpenLDAP 2.x.x
@@ -92,7 +92,7 @@ class OpenLDAP
     {
         if (empty($userDn) or empty($password)) {
             \Session::flash('flashErrors.connection', "Error binding to LDAP: userDn or password empty");
-            Log::error('Error binding to LDAP: userDn or password empty');
+            Log::emergency('Error binding to LDAP: userDn or password empty');
             return false;
         }
 
@@ -123,7 +123,7 @@ class OpenLDAP
             }
         } catch (\Exception $e) {
             \Session::flash('flashErrors.connection', "Error binding to LDAP");
-            Log::error('Error binding to LDAP:' . $e);
+            Log::emergency('Error binding to LDAP:' . $e);
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
@@ -150,8 +150,8 @@ class OpenLDAP
                 ? ldap_get_entries($this->connection, $search)
                 : false;
         } catch(\Exception $e) {
-            \Session::flash('flashErrors.connection', "Failed search for {$filter} in {$searchDn}");
-            Log::error("Failed search for {$filter} in {$searchDn}");
+            \Session::flash('flashErrors.connection', __("openldap::error.search_failed", ['filter' => $filter, 'searchDn' => $searchDn]));
+            Log::emergency("Failed search for {$filter} in {$searchDn}");
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
@@ -186,13 +186,17 @@ class OpenLDAP
 
             if ($addProcess) {
                 return true;
+            }else{
+                throw new \Exception('Faild to add record in LDAP');
             }
         } catch(\Exception $e) {
-            Log::error("Failed adding {$addDn}", ['data' => print_r($record, true)]);
+            Log::emergency("Failed adding {$addDn}", ['data' => print_r($record, true)]);
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
-            \Session::flash('flashErrors.connection', "Failed adding {$addDn} | " . ldap_error($this->connection) . " | " . $errorMessage);
+            \Session::flash('flashErrors.connection', __("openldap::error.add_record_failed", ['addDn' => $addDn, 'error' => ldap_error($this->connection), 'errorMessage' => $errorMessage]));
+
+            return false;
         }
 
         return false;
@@ -205,13 +209,15 @@ class OpenLDAP
 
             if ($renameProcess) {
                 return true;
+            }else{
+                throw new \Exception('Faild to rename record in LDAP');
             }
         } catch(\Exception $e) {
-            \Session::flash('flashErrors.connection', "Failed renaming {$oldDn} to ${newDn}");
-            Log::error("Failed renaming {$oldDn} to ${newDn}");
+            Log::emergency("Failed renaming {$oldDn} to ${newDn}");
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
+            \Session::flash('flashErrors.connection', __("openldap::error.dn_rename_failed", ['oldDn' => $oldDn, 'newDn' => $newDn.','.$newParent]));
         }
 
         return false;
@@ -249,13 +255,17 @@ class OpenLDAP
 
             if ($modifyProcess) {
                 return true;
+            }else{
+                throw new \Exception('Faild to rename record in LDAP');
             }
         } catch(\Exception $e) {
-            \Session::flash('flashErrors.connection', "Failed to update {$modifyDn}");
-            Log::error("Failed to update {$modifyDn}", ['data' => print_r($record, true)]);
+            Log::emergency("Failed to update {$modifyDn}", ['data' => print_r($record, true)]);
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
+            \Session::flash('flashErrors.connection', __("openldap::error.modify_failed", ['modifyDn' => $modifyDn]));
+
+            return false;
         }
 
         return false;
@@ -291,11 +301,11 @@ class OpenLDAP
                 return true;
             }
         } catch(\Exception $e) {
-            \Session::flash('flashErrors.connection', "Failed modifying user {$addDn}");
-            Log::error("Failed modifying user {$addDn}", ['data' => print_r($record, true)]);
+            Log::emergency("Failed modifying user {$addDn}", ['data' => print_r($record, true)]);
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
+            \Session::flash('flashErrors.connection', __("openldap::error.add_failed", ['modifyDn' => $addDn]));
         }
 
         return false;
@@ -318,7 +328,7 @@ class OpenLDAP
         if($authenticated) {
             return $this->updateRecord($user->dn, ['userPassword' => $newPassword]);
         } else {
-            \Session::flash('flashErrors.connection', "Wrong password when trying to change by user {$user->uid}");
+            \Session::flash('flashErrors.connection', __("openldap::error.password_does_not_match_failed", ['uid' => $user->uid]));
             Log::error("Wrong password when trying to change by user {$user->uid}");
         }
 
@@ -348,11 +358,11 @@ class OpenLDAP
         try {
             return (ldap_delete($this->connection, $dn));
         } catch(\Exception $e) {
-            Log::error("Failed deleting {$dn}");
+            Log::emergency("Failed deleting {$dn}");
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
-            \Session::flash('flashErrors.connection', "Failed deleting {$dn} | " . ldap_error($this->connection) . " | " . $errorMessage);
+            \Session::flash('flashErrors.connection', __("openldap::error.delete_failed", ['dn' => $dn]));
         }
 
         return false;
@@ -411,8 +421,8 @@ class OpenLDAP
         try {
             return (ldap_mod_del($this->connection, $deleteDn, $record));
         } catch(\Exception $e) {
-            \Session::flash('flashErrors.connection', "Failed deleting from {$deleteDn}");
-            Log::error("Failed deleting from {$deleteDn}", ['data' => print_r($record, true)]);
+            \Session::flash('flashErrors.connection', __("openldap::error.attribute_deletion_failed", ['dn' => $deleteDn]));
+            Log::emergency("Failed deleting from {$deleteDn}", ['data' => print_r($record, true)]);
             Log::error(ldap_error($this->connection));
             ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
             Log::error($errorMessage);
