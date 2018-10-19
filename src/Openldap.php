@@ -140,11 +140,14 @@ class OpenLDAP
      * @param string $searchdn
      * @param string $filter
      * @param array $attributes
+     * @param bool $oneLevel If true, only search in the child nodes of the searchDn, make a full deep search otherwise
      */
-    public function search($searchDn, $filter, $attributes = array())
+    public function search($searchDn, $filter, $attributes = array(), $oneLevel = false)
     {
         try {
-            $search = ldap_search($this->connection, $searchDn, $filter, $attributes);
+            $search = $oneLevel
+                ? ldap_list($this->connection, $searchDn, $filter, $attributes)
+                : ldap_search($this->connection, $searchDn, $filter, $attributes);
 
             return (ldap_count_entries($this->connection, $search))
                 ? ldap_get_entries($this->connection, $search)
