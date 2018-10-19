@@ -179,3 +179,93 @@ foreach(request('groups') as $groupId){
     $this->openldap->addUserToGroup($user, $group->dn);
 }
 ```
+
+###Cleaning arrays
+If you get back the search results from LDAP it has an ugly format, it is hard to work with. If you use the cleanUpEntry($entry) function, it will return a beutified cleaned php array. Credit goes to [Chl](http://php.net/manual/en/function.ldap-get-entries.php#89508)
+
+Example for simple search result:
+
+```
+dump($this->openldap->search("ou=phonebook,ou=dev,dc=uni-pannon,dc=hu", "uid=ratting.gergo.mik-math"));
+
+array:2 [▼
+  "count" => 1
+  0 => array:18 [▼
+    "objectclass" => array:5 [▼
+      "count" => 4
+      0 => "top"
+      1 => "person"
+      2 => "organizationalPerson"
+      3 => "inetOrgPerson"
+    ]
+    0 => "objectclass"
+    "sn" => array:2 [▼
+      "count" => 1
+      0 => "Ratting"
+    ]
+    1 => "sn"
+    "cn" => array:2 [▼
+      "count" => 1
+      0 => "Ratting Gergely"
+    ]
+    2 => "cn"
+    "displayname" => array:2 [▼
+      "count" => 1
+      0 => "Ratting Gergely"
+    ]
+    3 => "displayname"
+    "telephonenumber" => array:2 [▼
+      "count" => 1
+      0 => "4835"
+    ]
+    4 => "telephonenumber"
+    "ou" => array:3 [▼
+      "count" => 2
+      0 => "MIK"
+      1 => "MIK-MATH"
+    ]
+    5 => "ou"
+    "roomnumber" => array:2 [▼
+      "count" => 1
+      0 => "B211"
+    ]
+    6 => "roomnumber"
+    "uid" => array:2 [▼
+      "count" => 1
+      0 => "ratting.gergo.mik-math"
+    ]
+    7 => "uid"
+    "count" => 8
+    "dn" => "uid=ratting.gergo.mik-math,ou=phonebook,ou=dev,dc=uni-pannon,dc=hu"
+  ]
+]
+```
+
+If we clean the result:
+
+```
+dump($this->openldap->cleanUpEntry(
+    $this->openldap->search("ou=phonebook,ou=dev,dc=uni-pannon,dc=hu", "uid=ratting.gergo.mik-math")
+));
+
+array:1 [▼
+  "uid=ratting.gergo.mik-math,ou=phonebook,ou=dev,dc=uni-pannon,dc=hu" => array:8 [▼
+    "objectclass" => array:4 [▼
+      0 => "top"
+      1 => "person"
+      2 => "organizationalPerson"
+      3 => "inetOrgPerson"
+    ]
+    "sn" => "Ratting"
+    "cn" => "Ratting Gergely"
+    "displayname" => "Ratting Gergely"
+    "telephonenumber" => "4835"
+    "ou" => array:2 [▼
+      0 => "MIK"
+      1 => "MIK-MATH"
+    ]
+    "roomnumber" => "B211"
+    "uid" => "ratting.gergo.mik-math"
+  ]
+]
+```

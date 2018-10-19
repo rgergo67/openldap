@@ -182,7 +182,9 @@ class OpenLDAP
     public function addRecord($addDn, $record)
     {
         try {
+            $t1 = microtime(true);
             $addProcess = ldap_add($this->connection, $addDn, $record);
+            Log::info('ADD: ' . (microtime(true) - $t1));
 
             if ($addProcess) {
                 return true;
@@ -378,7 +380,7 @@ class OpenLDAP
      */
     public function recursiveDelete($dn, $deleteOnlyChildren = false)
     {
-        $searchResult = ldap_list($this->connection, $dn, "ObjectClass=*");
+        $searchResult = ldap_list($this->connection, $dn, "ObjectClass=*", ['dn']);
         $children = ldap_get_entries($this->connection, $searchResult);
         $this->stripCount($children);
         foreach($children as $child){
@@ -519,7 +521,7 @@ class OpenLDAP
      * @return array $arr without count keys. It doesn't have to return it, because unset works on the referenced array
      * but it is easier to work with the result this way eg. return $this->stripCount($array);
      */
-    function stripCount(array &$arr)
+    public function stripCount(array &$arr)
     {
         foreach ($arr as $key => $value) {
             if (is_array($arr[$key])) {
@@ -531,6 +533,43 @@ class OpenLDAP
             }
         }
         return $arr;
+    }
+
+
+    /**
+     * Create a readable array for Laravel
+     * Removes count, and put dn in array key
+     *
+     * @param integer $entry The entry
+     *
+     * @return array ( description_of_the_return_value )
+     */
+    public function cleanUpEntry( $entry ) {
+        $retEntry = array();
+        for ( $i = 0; $i < $entry['count']; $i++ ) {
+            if (is_array($entry[$i])) {
+                $subtree = $entry[$i];
+                //This condition should be superfluous so just take the recursive call
+                //adapted to your situation in order to increase perf.
+                if ( ! empty($subtree['dn']) and ! isset($retEntry[$subtree['dn']])) {
+                    $retEntry[$subtree['dn']] = $this->cleanUpEntry($subtree);
+                }
+                else {
+                    $retEntry[] = $this->cleanUpEntry($subtree);
+                }
+            }
+            else {
+                $attribute = $entry[$i];
+                if ( $entry[$attribute]['count'] == 1 ) {
+                    $retEntry[$attribute] = $entry[$attribute][0];
+                } else {
+                    for ( $j = 0; $j < $entry[$attribute]['count']; $j++ ) {
+                        $retEntry[$attribute][] = $entry[$attribute][$j];
+                    }
+                }
+            }
+        }
+        return $retEntry;
     }
 
 }
