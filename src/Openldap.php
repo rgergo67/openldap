@@ -430,8 +430,8 @@ class OpenLDAP
      * @param \App\User $user The user
      * @param string $groupDn The group dn
      */
-    public function addUserToGroup($user, $groupDn){
-        $record['memberUid'] = $user->uid;
+    public function addUserToGroup($memberUid, $groupDn){
+        $record['memberUid'] = $memberUid;
         return $this->addAttribute($groupDn, $record);
     }
 
@@ -442,8 +442,8 @@ class OpenLDAP
      *
      * @return array The dns of the groups of the user.
      */
-    public function getUserGroups($user){
-        $groups = $this->search(config('openldap.base_group_dn'), "memberUid={$user->uid}", ["dn"]);
+    public function getUserGroups($memberUid){
+        $groups = $this->search(config('openldap.base_group_dn'), "memberUid={$memberUid}", ["dn"]);
 
         if($groups) {
             $this->stripCount($groups);
@@ -461,9 +461,9 @@ class OpenLDAP
      *
      * @return boolean
      */
-    public function deleteUserFromGroup($user, $groupDn)
+    public function deleteUserFromGroup($memberUid, $groupDn)
     {
-        $record['memberUid'] = $user->uid;
+        $record['memberUid'] = $memberUid;
         return $this->deleteAttribute($groupDn, $record);
     }
 
@@ -472,11 +472,11 @@ class OpenLDAP
      *
      * @param \App\User $user The user
      */
-    public function deleteUserFromAllGroups($user)
+    public function deleteUserFromAllGroups($memberUid)
     {
-        $groups = $this->getUserGroups($user);
+        $groups = $this->getUserGroups($memberUid);
         foreach($groups as $group) {
-            $this->deleteUserFromGroup($user, $group['dn']);
+            $this->deleteUserFromGroup($memberUid, $group['dn']);
         }
     }
 
