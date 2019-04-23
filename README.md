@@ -1,3 +1,7 @@
+# Don't use this for production
+
+Feel free to fork it and modify it as you wish, but don't use this for production. The version numbering does not follow any conventions, this exists only for test purposes.
+
 # Openldap-laravel
 
 With this package you can add users to OpenLdap, edit and delete them, manage their attributes and add them to posix groups. The package is used to a specific project with specific needs,  feel free to modify it.
