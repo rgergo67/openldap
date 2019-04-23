@@ -81,6 +81,12 @@ class OpenLDAP
 
     }
 
+    public function getError()
+    {
+        $error = ldap_error($this->connection);
+        return $error == 'Success' ? '' : $error;
+    }
+
     /**
      * Authenticate to LDAP server.
      *
@@ -476,8 +482,10 @@ class OpenLDAP
     {
         $groups = $this->getUserGroups($baseGroupDn, $memberUid);
         foreach($groups as $group) {
-            $this->deleteUserFromGroup($memberUid, $group['dn']);
+            if(!$this->deleteUserFromGroup($memberUid, $group['dn']))
+                return false;
         }
+        return true;
     }
 
     /**
@@ -489,8 +497,10 @@ class OpenLDAP
         $this->deleteUserFromAllGroups($baseGroupDn, $user);
 
         foreach($user->groups as $group){
-            $this->addUserToGroup($user, $group->dn);
+            if(!$this->addUserToGroup($user, $group->dn))
+                return false;
         }
+        return true;
     }
 
     /**
