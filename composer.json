@@ -1,0 +1,29 @@
+{
+    "name": "rgergo67/openldap",
+    "description": "Laravel package to handle openldap requests.",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Ratting Gergely",
+            "email": "rgergo67@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.2",
+        "ext-ldap": "*"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^4.0",
+        "squizlabs/php_codesniffer": "^3.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "rgergo67\\Openldap\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "rgergo67\\Openldap\\Tests\\": "tests/"
+        }
+    }
+}
