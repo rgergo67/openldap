@@ -36,7 +36,7 @@ namespace Rgergo67\Openldap;
 
 use Log;
 
-class OpenLDAP
+class Openldap
 {
     private $connection;
 
