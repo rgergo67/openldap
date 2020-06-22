@@ -549,7 +549,7 @@ class Openldap
         $retEntry = [];
 
         if ($entry === FALSE) {
-            return $entry;
+            return $retEntry;
         }
 
         for ( $i = 0; $i < $entry['count']; $i++ ) {
