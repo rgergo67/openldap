@@ -546,7 +546,12 @@ class Openldap
      * @return array ( description_of_the_return_value )
      */
     public function cleanUpEntry( $entry ) {
-        $retEntry = array();
+        $retEntry = [];
+
+        if ($entry === FALSE) {
+            return $entry;
+        }
+
         for ( $i = 0; $i < $entry['count']; $i++ ) {
             if (is_array($entry[$i])) {
                 $subtree = $entry[$i];
@@ -570,6 +575,7 @@ class Openldap
                 }
             }
         }
+
         return $retEntry;
     }
 
