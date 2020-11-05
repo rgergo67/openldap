@@ -23,8 +23,6 @@ class OpenldapServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        include __DIR__.'/routes/web.php';
-
         $this->publishes([
             __DIR__.'/config/openldap.php' => config_path('openldap.php'),
         ]);

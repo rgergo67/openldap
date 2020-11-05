@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.11] - 2019-02-04
 
 ### Changed
+- Removed routes
+
+## [1.0.11] - 2019-02-04
+
+### Changed
 - Renamed class to meet psr-4 standards
 
 ## [1.0.7] - 2019-02-04
