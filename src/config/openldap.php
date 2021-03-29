@@ -11,7 +11,7 @@ return [
      | example : true
      |
      */
-    'sync' => env('OPENLDAP_SYNC'),
+    'sync' => env('OPENLDAP_SYNC', false),
 
     /*
      |--------------------------------------------------------------------------
@@ -33,7 +33,7 @@ return [
      | example : default 389
      |
      */
-    'port' => '636',
+    'port' => env('OPENLDAP_PORT', 389),
 
     /*
      |--------------------------------------------------------------------------
@@ -90,6 +90,17 @@ return [
 
     /*
      |--------------------------------------------------------------------------
+     | PartnerDn
+     |--------------------------------------------------------------------------
+     |
+     | basedn for partners
+     | example : 'cn=partners,ou=people,dc=uni-pannon,dc=hu'
+     |
+     */
+    'base_partner_dn'    => env('OPENLDAP_BASE_PARTNER_DN'),
+
+    /*
+     |--------------------------------------------------------------------------
      | StudentDn
      |--------------------------------------------------------------------------
      |
@@ -98,6 +109,17 @@ return [
      |
      */
     'base_student_dn'    => env('OPENLDAP_BASE_STUDENT_DN'),
+
+    /*
+     |--------------------------------------------------------------------------
+     | StudentDn
+     |--------------------------------------------------------------------------
+     |
+     | basedn for students
+     | example : 'cn=students,ou=people,dc=uni-pannon,dc=hu'
+     |
+     */
+    'base_mailclient_dn'    => env('OPENLDAP_BASE_MAILCLIENT_DN'),
 
     /*
      |--------------------------------------------------------------------------
@@ -173,9 +195,34 @@ return [
         "radiusprofile",
         "shadowAccount",
         "sambaSamAccount",
+        "extensibleObject",
         "schacContactLocation",
         "organizationalPerson",
         "schacLinkageIdentifiers" ,
+    ],
+
+    'partner_object_class' => [
+        "top",
+        "person",
+        "eduPerson",
+        "niifPerson",
+        "niifEduPerson",
+        "posixAccount",
+        "inetOrgPerson",
+        "radiusprofile",
+        "shadowAccount",
+        "sambaSamAccount",
+        "extensibleObject",
+        "schacContactLocation",
+        "organizationalPerson",
+        "schacLinkageIdentifiers" ,
+    ],
+
+    'position_object_class' => [
+        "top",
+        "person",
+        "inetOrgPerson",
+        "organizationalPerson",
     ],
 
     'student_object_class' => [
@@ -189,6 +236,7 @@ return [
         "radiusprofile",
         "shadowAccount",
         "sambaSamAccount",
+        "extensibleObject",
         "schacContactLocation",
         "organizationalPerson",
         "schacLinkageIdentifiers" ,
@@ -196,7 +244,7 @@ return [
 
     'ou_object_class' => [
         "top",
-        "organizationalUnit"
+        "organizationalUnit",
     ],
 
     'phonebook_entry_object_class' => [
@@ -208,17 +256,17 @@ return [
 
     'system_type_object_class' => [
         "top",
-        "organizationalUnit"
+        "organizationalUnit",
     ],
 
     'system_object_class' => [
         "top",
-        "organizationalUnit"
+        "organizationalUnit",
     ],
 
     'group_object_class' => [
         "top",
-        "posixGroup"
+        "posixGroup",
     ],
 
 ];

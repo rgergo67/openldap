@@ -47,14 +47,14 @@ class Openldap
 
         $this->connection = $this->connect($host, $port);
 
+        ldap_start_tls($this->connection);
+
         $this->bind($this->connection, config('openldap.admin_dn'), config('openldap.admin_password'));
     }
 
     public function __destruct()
     {
-        if (!is_null($this->connection)) {
-            $this->close($this->connection);
-        }
+        $this->close($this->connection);
     }
 
     /**
@@ -68,11 +68,8 @@ class Openldap
         $connection = ldap_connect($host, $port); // must be a valid LDAP server!
         ldap_set_option($connection, LDAP_OPT_PROTOCOL_VERSION, 3);
 
-        if($connection == false) {
-            Log::emergency("Connection could not be estabilished to {$host} {$port}");
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
+        if ($connection == false) {
+            $this->logError("Connection could not be estabilished to {$host} {$port}");
         }
 
         // PHP Reference says there is no control of connection status in OpenLDAP 2.x.x
@@ -84,6 +81,7 @@ class Openldap
     public function getError()
     {
         $error = ldap_error($this->connection);
+
         return $error == 'Success' ? '' : $error;
     }
 
@@ -103,7 +101,9 @@ class Openldap
         //we need a new connection to bind, otherwise the already binded admin connection would be overwritten
         $authConnection = $this->connect(config('openldap.host'), config('openldap.port'));
 
-        $isConnected = $this->bind($authConnection, $username, $password);
+        ldap_start_tls($authConnection);
+
+        $isConnected = $this->bind($authConnection, $userDn, $password);
 
         //close temporary connection
         $this->close($authConnection);
@@ -121,17 +121,9 @@ class Openldap
     public function bind($connection, $rdn, $password)
     {
         try {
-            $bind = ldap_bind($connection, $rdn, $password);
-            if ($bind) {
-                return true;
-            }
+            return ldap_bind($connection, $rdn, $password);
         } catch (\Exception $e) {
-            Log::emergency('Error binding to LDAP:' . $e);
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
-
-            return false;
+            return $this->logError('Error binding to LDAP:' . $e);
         }
 
     }
@@ -152,16 +144,11 @@ class Openldap
                 ? ldap_list($this->connection, $searchDn, $filter, $attributes)
                 : ldap_search($this->connection, $searchDn, $filter, $attributes);
 
-            return (ldap_count_entries($this->connection, $search))
+            return ldap_count_entries($this->connection, $search)
                 ? ldap_get_entries($this->connection, $search)
                 : false;
         } catch(\Exception $e) {
-            Log::emergency("Failed search for {$filter} in {$searchDn}");
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
-
-            return false;
+            return $this->logError("Failed search for {$filter} in {$searchDn}");
         }
     }
 
@@ -187,44 +174,18 @@ class Openldap
     public function addRecord($addDn, $record)
     {
         try {
-            $t1 = microtime(true);
-            $addProcess = ldap_add($this->connection, $addDn, $record);
-
-            if ($addProcess) {
-                return true;
-            }else{
-                throw new \Exception('Faild to add record in LDAP');
-            }
+            return ldap_add($this->connection, $addDn, $record);
         } catch(\Exception $e) {
-            Log::emergency("Failed adding {$addDn}", ['data' => print_r($record, true)]);
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
-
-            return false;
+            return $this->logError("Failed adding {$addDn}", ['data' => print_r($record, true)]);
         }
-
-        return false;
-
     }
 
     public function rename($oldDn, $newDn, $newParent){
         try {
-            $renameProcess = ldap_rename($this->connection, $oldDn, $newDn, $newParent, TRUE);
-
-            if ($renameProcess) {
-                return true;
-            }else{
-                throw new \Exception('Faild to rename record in LDAP');
-            }
+            return ldap_rename($this->connection, $oldDn, $newDn, $newParent, TRUE);
         } catch(\Exception $e) {
-            Log::emergency("Failed renaming {$oldDn} to ${newDn}");
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
+            return $this->logError("Failed renaming {$oldDn} to ${newDn}");
         }
-
-        return false;
     }
 
     /**
@@ -237,7 +198,7 @@ class Openldap
     public function addUser($user)
     {
         //if the user already exists, update it
-        if($this->findUserByUid($user->uid)) {
+        if ($this->findUserByUid($user->uid)) {
             return $this->updateUser($user);
         }
 
@@ -255,24 +216,10 @@ class Openldap
     public function updateRecord($modifyDn, $record)
     {
         try {
-            $modifyProcess = ldap_modify($this->connection, $modifyDn, $record);
-
-            if ($modifyProcess) {
-                return true;
-            }else{
-                throw new \Exception('Faild to rename record in LDAP');
-            }
+            return ldap_modify($this->connection, $modifyDn, $record);
         } catch(\Exception $e) {
-            Log::emergency("Failed to update {$modifyDn}", ['data' => print_r($record, true)]);
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
-
-            return false;
+            return $this->logError("Failed to update {$modifyDn}", ['data' => print_r($record, true)]);
         }
-
-        return false;
-
     }
 
     /**
@@ -298,19 +245,10 @@ class Openldap
     public function addAttribute($addDn, $record)
     {
         try {
-            $addProcess = ldap_mod_add($this->connection, $addDn, $record);
-
-            if ($addProcess) {
-                return true;
-            }
+            return ldap_mod_add($this->connection, $addDn, $record);
         } catch(\Exception $e) {
-            Log::emergency("Failed modifying user {$addDn}", ['data' => print_r($record, true)]);
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
+            return $this->logError("Failed modifying user {$addDn}", ['data' => print_r($record, true)]);
         }
-
-        return false;
     }
 
     /**
@@ -324,16 +262,12 @@ class Openldap
      */
     public function replacePassword($user, $oldPassword, $newPassword)
     {
-        $authenticated = $this->authenticate($user->dn, $oldPassword);
-
         //old password matches => change it to new
-        if($authenticated) {
+        if ($this->authenticate($user->dn, $oldPassword)) {
             return $this->updateRecord($user->dn, ['userPassword' => $newPassword]);
         } else {
-            Log::error("Wrong password when trying to change by user {$user->uid}");
+            return $this->logError("Wrong password when trying to change by user {$user->uid}");
         }
-
-        return false;
     }
 
     /**
@@ -357,15 +291,10 @@ class Openldap
     public function deleteRecord($dn)
     {
         try {
-            return (ldap_delete($this->connection, $dn));
+            return ldap_delete($this->connection, $dn);
         } catch(\Exception $e) {
-            Log::emergency("Failed deleting {$dn}");
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
+            return $this->logError("Failed deleting {$dn}");
         }
-
-        return false;
     }
 
     /**
@@ -381,16 +310,17 @@ class Openldap
         $searchResult = ldap_list($this->connection, $dn, "ObjectClass=*", ['dn']);
         $children = ldap_get_entries($this->connection, $searchResult);
         $this->stripCount($children);
+
         foreach($children as $child){
             $result = $this->recursiveDelete($child['dn']);
-            if (!$result) {
+            if (! $result) {
                 return $result;
             }
         }
 
-        if($deleteOnlyChildren){
+        if ($deleteOnlyChildren){
             return true;
-        }else{
+        } else {
             return $this->deleteRecord($dn);
         }
     }
@@ -419,15 +349,10 @@ class Openldap
     public function deleteAttribute($deleteDn, $record)
     {
         try {
-            return (ldap_mod_del($this->connection, $deleteDn, $record));
+            return ldap_mod_del($this->connection, $deleteDn, $record);
         } catch(\Exception $e) {
-            Log::emergency("Failed deleting from {$deleteDn}", ['data' => print_r($record, true)]);
-            Log::error(ldap_error($this->connection));
-            ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
-            Log::error($errorMessage);
+            return $this->logError("Failed deleting from {$deleteDn}", ['data' => print_r($record, true)]);
         }
-
-        return false;
     }
 
     /**
@@ -436,9 +361,9 @@ class Openldap
      * @param \App\User $user The user
      * @param string $groupDn The group dn
      */
-    public function addUserToGroup($memberUid, $groupDn){
-        $record['memberUid'] = $memberUid;
-        return $this->addAttribute($groupDn, $record);
+    public function addUserToGroup($memberUid, $groupDn)
+    {
+        return $this->addAttribute($groupDn, ['memberUid' => $memberUid]);
     }
 
     /**
@@ -448,15 +373,13 @@ class Openldap
      *
      * @return array The dns of the groups of the user.
      */
-    public function getUserGroups($baseGroupDn, $memberUid){
+    public function getUserGroups($baseGroupDn, $memberUid)
+    {
         $groups = $this->search($baseGroupDn, "memberUid={$memberUid}", ["dn"]);
 
-        if($groups) {
-            $this->stripCount($groups);
-        } else {
-            $groups = [];
-        }
-        return $groups;
+        return $groups
+            ? $this->stripCount($groups)
+            : [];
     }
 
     /**
@@ -469,8 +392,7 @@ class Openldap
      */
     public function deleteUserFromGroup($memberUid, $groupDn)
     {
-        $record['memberUid'] = $memberUid;
-        return $this->deleteAttribute($groupDn, $record);
+        return $this->deleteAttribute($groupDn, ['memberUid' => $memberUid]);
     }
 
     /**
@@ -481,11 +403,10 @@ class Openldap
     public function deleteUserFromAllGroups($baseGroupDn, $memberUid)
     {
         $groups = $this->getUserGroups($baseGroupDn, $memberUid);
+
         foreach($groups as $group) {
-            if(!$this->deleteUserFromGroup($memberUid, $group['dn']))
-                return false;
+            $this->deleteUserFromGroup($memberUid, $group['dn']);
         }
-        return true;
     }
 
     /**
@@ -493,14 +414,13 @@ class Openldap
      *
      * @param <type> $user The user
      */
-    public function syncUserGroups($baseGroupDn, $user){
+    public function syncUserGroups($baseGroupDn, $user)
+    {
         $this->deleteUserFromAllGroups($baseGroupDn, $user);
 
-        foreach($user->groups as $group){
-            if(!$this->addUserToGroup($user, $group->dn))
-                return false;
+        foreach ($user->groups as $group) {
+            $this->addUserToGroup($user, $group->dn);
         }
-        return true;
     }
 
     /**
@@ -510,9 +430,9 @@ class Openldap
      */
     public function close($connection)
     {
-        ldap_unbind($connection);
-
-        return true;
+        if (! is_null($connection)) {
+            ldap_unbind($connection);
+        }
     }
 
     /**
@@ -577,6 +497,16 @@ class Openldap
         }
 
         return $retEntry;
+    }
+
+    protected function logError($text, $data = [])
+    {
+        Log::emergency($text, $data);
+        Log::error(ldap_error($this->connection));
+        ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
+        Log::error($errorMessage);
+
+        return false;
     }
 
 }
