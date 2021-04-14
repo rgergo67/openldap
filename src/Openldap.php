@@ -1,37 +1,5 @@
 <?php
-/**
- * PHP OpenLDAP
- *
- * @author   Ratting Gergely <ratting.gergo@uni-pannon.hu>
- * @package  PHP Openldap
- *
- * Adding new user, where $user should have dn and ldap_format virtual fields
- * addUser($user)
- *
- * Find user by uid
- * findUserByUid($user->uid)
- *
- * To add new password without checking the old
- * newPassword($user, "secret")
- *
- * To replace the old password, and checking if it's correct
- * replacePassword($user, "oldSecret", "newSecret")
- *
- * Adding user to a group
- * addUserToGroup($user, $group_dn);
- *
- * Add attribute to dn. $record should be in format ['attribute' => 'value']
- * addAttribute($dn, $record)
- *
- * List the users groups. It returns an array of group dns like this: [0 => ['dn' => 'cn=group1,dc=uni-pannon,dc=hu']. 1 => ['dn' => 'cn=group2,...']]
- * $openldap->getUserGroups($user)
- *
- * Delete user from group
- * deleteUserFromGroup($user, $group_dn);
- *
- * Delete user from all groups
- * deleteUserFromAllGroups($user);
- */
+
 namespace Rgergo67\Openldap;
 
 use Log;
@@ -39,6 +7,7 @@ use Log;
 class Openldap
 {
     private $connection;
+    private $errors = [];
 
     public function __construct()
     {
@@ -78,11 +47,9 @@ class Openldap
 
     }
 
-    public function getError()
+    public function getErrors()
     {
-        $error = ldap_error($this->connection);
-
-        return $error == 'Success' ? '' : $error;
+        return implode('<br>', $this->errors);
     }
 
     /**
@@ -137,7 +104,7 @@ class Openldap
      * @param array $attributes
      * @param bool $oneLevel If true, only search in the child nodes of the searchDn, make a full deep search otherwise
      */
-    public function search($searchDn, $filter, $attributes = array(), $oneLevel = false)
+    public function search($searchDn, $filter, $attributes = [], $oneLevel = false)
     {
         try {
             $search = $oneLevel
@@ -153,15 +120,15 @@ class Openldap
     }
 
     /**
-     * Find user by uid
+     * Determines if the given dn exists.
      *
-     * @param string $uid The uid
+     * @param <type> $dn { parameter_description }
      *
-     * @return array attributes
+     * @return <type> True if check if exists, False otherwise.
      */
-    public function findUserByUid($uid)
+    public function checkIfExists($dn)
     {
-        return $this->search(config('openldap.base_user_dn'), config('openldap.login_attribute') . '=' . $uid);
+        return ldap_read($this->connection, $dn, '(objectclass=*)', ['dn']) !== false;
     }
 
     /**
@@ -174,6 +141,11 @@ class Openldap
     public function addRecord($addDn, $record)
     {
         try {
+            foreach ($record as $key => $attribute) {
+                if (empty($attribute)) {
+                    unset($record[$key]);
+                }
+            }
             return ldap_add($this->connection, $addDn, $record);
         } catch(\Exception $e) {
             return $this->logError("Failed adding {$addDn}", ['data' => print_r($record, true)]);
@@ -189,23 +161,6 @@ class Openldap
     }
 
     /**
-     * Adds an user.
-     *
-     * @param \App\User  $user   The user
-     *
-     * @return Bool
-     */
-    public function addUser($user)
-    {
-        //if the user already exists, update it
-        if ($this->findUserByUid($user->uid)) {
-            return $this->updateUser($user);
-        }
-
-        return $this->addRecord($user->dn, $user->ldap_format );
-    }
-
-    /**
      * Update record. If it has multiple attributes with the same name eg. memberUid, and you give him just one for update
      * then all memberUid will be deleted and just the new one kept. If you want to add a new attribute, use addAttribute instead
      *
@@ -216,22 +171,15 @@ class Openldap
     public function updateRecord($modifyDn, $record)
     {
         try {
+            foreach ($record as $key => $attribute) {
+                if (empty($attribute)) {
+                    $record[$key] = [];
+                }
+            }
             return ldap_modify($this->connection, $modifyDn, $record);
         } catch(\Exception $e) {
             return $this->logError("Failed to update {$modifyDn}", ['data' => print_r($record, true)]);
         }
-    }
-
-    /**
-     * Updates user
-     *
-     * @param \App\User $user The user
-     *
-     * @return Bool
-     */
-    public function updateUser($user)
-    {
-        return $this->updateRecord($user->dn, $user->ldap_format);
     }
 
     /**
@@ -248,25 +196,6 @@ class Openldap
             return ldap_mod_add($this->connection, $addDn, $record);
         } catch(\Exception $e) {
             return $this->logError("Failed modifying user {$addDn}", ['data' => print_r($record, true)]);
-        }
-    }
-
-    /**
-     * Replace old password with a new one
-     *
-     * @param      <type>   $user         The user
-     * @param      <type>   $oldPassword     The old password
-     * @param      <type>   $newPassword  The new password
-     *
-     * @return     boolean
-     */
-    public function replacePassword($user, $oldPassword, $newPassword)
-    {
-        //old password matches => change it to new
-        if ($this->authenticate($user->dn, $oldPassword)) {
-            return $this->updateRecord($user->dn, ['userPassword' => $newPassword]);
-        } else {
-            return $this->logError("Wrong password when trying to change by user {$user->uid}");
         }
     }
 
@@ -505,6 +434,10 @@ class Openldap
         Log::error(ldap_error($this->connection));
         ldap_get_option($this->connection, LDAP_OPT_DIAGNOSTIC_MESSAGE, $errorMessage);
         Log::error($errorMessage);
+
+        $this->errors[] = $text;
+        $this->errors[] = $data;
+        $this->errors[] = $errorMessage;
 
         return false;
     }
